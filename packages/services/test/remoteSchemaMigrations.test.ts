@@ -1,8 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
 import type { DatabaseMigrationFacts } from "@codez/shared";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { Worker } from "node:worker_threads";
 import { once } from "node:events";
 import { build } from "esbuild";
@@ -10,6 +10,11 @@ import { afterEach, expect, it } from "vitest";
 import { runTasksDatabaseMigrations } from "#src/session/tasksDatabase/migrations.js";
 import { migrateControllerRemoteWorkspaceIdentity } from "#src/session/controllerRemoteIdentityMigration.js";
 import { SourceServerWorkspaceAliasRepo } from "#src/session/sourceServerWorkspaceAliasRepo.js";
+import { SourceServerWorkspaceIdentityMapper } from "#src/source-server-workspace/sourceServerWorkspaceIdentityChannelServer.js";
+import { ProjectRepository } from "#src/project-storage/project-repository.js";
+import { projectStorage } from "#src/project-storage/index.js";
+import { buildServerRemoteWorkspaceIdentity } from "@codez/shared";
+import { getWorkspaceHash } from "#src/paths.js";
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -359,3 +364,236 @@ it.each(["base", "controller-remote", "source-server"] as const)(
     }
   },
 );
+
+const equivalentHostId = "remote:server:srv:/";
+const equivalentSshKey = "remote:ssh:one:22:u:/repo";
+const equivalentServerKey = "remote:server:srv:/repo";
+
+async function equivalentPathFixture() {
+  const options = await fixture();
+  const db = new DatabaseSync(options.taskDbPath);
+  try {
+    await runTasksDatabaseMigrations(db);
+    await runTasksDatabaseMigrations(db, "source-server");
+    await projectStorage.migrate(db, {
+      hostId: equivalentHostId,
+      backupDirectories: [options.backupRoot],
+      now: () => Date.now(),
+    });
+  } finally {
+    db.close();
+  }
+  return options;
+}
+
+function insertEquivalentTask(
+  db: DatabaseSync,
+  workspaceKey: string,
+  workspacePath: string,
+  taskId: string,
+  metaJson = "{}",
+) {
+  db.prepare(
+    `INSERT INTO tasks (workspace_key, workspace_path, workspace_identity, task_id,
+        created_at, updated_at, host_id, root_path, cli_created_at, cli_updated_at, meta_json)
+       VALUES (?, ?, ?, ?, 1, 1, ?, ?, 1, 1, ?)`,
+  ).run(
+    workspaceKey,
+    workspacePath,
+    workspaceKey,
+    taskId,
+    equivalentHostId,
+    workspacePath,
+    metaJson,
+  );
+}
+
+it("等价尾斜杠路径重复 resolve 收敛同一 canonical 且 alias 单行", async () => {
+  const options = await equivalentPathFixture();
+  const repo = new SourceServerWorkspaceAliasRepo(options);
+  await repo.resolveCanonicalWorkspaceKey({
+    workspacePath: "/repo/",
+    legacyRouteHint: equivalentSshKey,
+  });
+  await expect(
+    repo.resolveCanonicalWorkspaceKey({
+      workspacePath: "/repo",
+      legacyRouteHint: equivalentSshKey,
+    }),
+  ).resolves.toEqual({ canonicalKey: equivalentSshKey, mergedKeys: [] });
+  const db = new DatabaseSync(options.taskDbPath, { readOnly: true });
+  try {
+    expect(db.prepare("SELECT path, canonical_key FROM workspace_alias").all()).toEqual([
+      { path: "/repo", canonical_key: equivalentSshKey },
+    ]);
+  } finally {
+    db.close();
+  }
+});
+
+it("历史等价路径 alias 分叉仅一方有状态时零搬运采纳有状态方，任务可解析可归档", async () => {
+  const options = await equivalentPathFixture();
+  const db = new DatabaseSync(options.taskDbPath);
+  try {
+    db.prepare(
+      "INSERT INTO workspace_alias (path, canonical_key, created_at, updated_at) VALUES (?, ?, 1, 1)",
+    ).run("/repo/", equivalentServerKey);
+    db.prepare(
+      "INSERT INTO workspace_alias (path, canonical_key, created_at, updated_at) VALUES (?, ?, 1, 1)",
+    ).run("/repo", equivalentSshKey);
+    insertEquivalentTask(db, equivalentSshKey, "/repo/", "task-1");
+  } finally {
+    db.close();
+  }
+  const repo = new SourceServerWorkspaceAliasRepo(options);
+  const mapper = new SourceServerWorkspaceIdentityMapper();
+  const stable = buildServerRemoteWorkspaceIdentity({
+    serverId: "srv",
+    workspacePath: "/repo/",
+  });
+  for (const workspacePath of ["/repo/", "/repo"]) {
+    const resolved = await repo.resolveCanonicalWorkspaceKey({ workspacePath });
+    expect(resolved).toEqual({ canonicalKey: equivalentSshKey, mergedKeys: [] });
+    mapper.register({ stableIdentity: stable, canonicalIdentity: resolved.canonicalKey });
+  }
+  const check = new DatabaseSync(options.taskDbPath);
+  try {
+    expect(check.prepare("SELECT path FROM workspace_alias ORDER BY path").all()).toEqual([
+      { path: "/repo" },
+    ]);
+    const projectRepo = new ProjectRepository(check, equivalentHostId);
+    const mapped = mapper.mapIncoming({
+      workspacePath: "/repo/",
+      workspaceIdentity: stable,
+      taskId: "task-1",
+    });
+    // 修复前这里抛 project.remote-project-required（映射覆盖后查不到 task 行）。
+    expect(projectRepo.resolveSessionDirectories(mapped)).toMatchObject({
+      workspacePath: "/repo/",
+      projectId: null,
+    });
+    expect(projectRepo.readTaskCwd(mapped)).toBe("/repo/");
+  } finally {
+    check.close();
+  }
+});
+
+it("历史等价路径 alias 双方有状态且任务不相交时复用合并流程收口单 canonical", async () => {
+  const options = await equivalentPathFixture();
+  const db = new DatabaseSync(options.taskDbPath);
+  try {
+    db.prepare(
+      "INSERT INTO workspace_alias (path, canonical_key, created_at, updated_at) VALUES (?, ?, 1, 1)",
+    ).run("/repo/", equivalentServerKey);
+    db.prepare(
+      "INSERT INTO workspace_alias (path, canonical_key, created_at, updated_at) VALUES (?, ?, 1, 1)",
+    ).run("/repo", equivalentSshKey);
+    insertEquivalentTask(db, equivalentServerKey, "/repo/", "task-a");
+    insertEquivalentTask(db, equivalentSshKey, "/repo/", "task-b");
+  } finally {
+    db.close();
+  }
+  const repo = new SourceServerWorkspaceAliasRepo(options);
+  const resolved = await repo.resolveCanonicalWorkspaceKey({ workspacePath: "/repo" });
+  expect(resolved.mergedKeys).toEqual(
+    resolved.canonicalKey === equivalentServerKey ? [equivalentSshKey] : [equivalentServerKey],
+  );
+  const check = new DatabaseSync(options.taskDbPath);
+  try {
+    expect(
+      check.prepare("SELECT task_id, workspace_key FROM tasks ORDER BY task_id").all(),
+    ).toEqual([
+      { task_id: "task-a", workspace_key: resolved.canonicalKey },
+      { task_id: "task-b", workspace_key: resolved.canonicalKey },
+    ]);
+    expect(check.prepare("SELECT path FROM workspace_alias").all()).toEqual([{ path: "/repo" }]);
+    expect(check.prepare("SELECT status FROM workspace_migration_ledger").all()).toEqual([
+      { status: "completed" },
+    ]);
+  } finally {
+    check.close();
+  }
+});
+
+it("历史等价路径 alias 双方有状态且配置目录冲突时 fail-closed 且不整合 alias", async () => {
+  const options = await equivalentPathFixture();
+  const db = new DatabaseSync(options.taskDbPath);
+  try {
+    db.prepare(
+      "INSERT INTO workspace_alias (path, canonical_key, created_at, updated_at) VALUES (?, ?, 1, 1)",
+    ).run("/repo/", equivalentServerKey);
+    db.prepare(
+      "INSERT INTO workspace_alias (path, canonical_key, created_at, updated_at) VALUES (?, ?, 1, 1)",
+    ).run("/repo", equivalentSshKey);
+    insertEquivalentTask(db, equivalentServerKey, "/repo/", "task-a");
+    insertEquivalentTask(db, equivalentSshKey, "/repo/", "task-b");
+  } finally {
+    db.close();
+  }
+  // 配置目录哈希只吃 workspaceKey；两侧同相对路径不同字节触发既有 config 冲突 fail-closed。
+  for (const [key, content] of [
+    [equivalentServerKey, "A"],
+    [equivalentSshKey, "B"],
+  ] as const) {
+    const dir = join(dirname(options.taskDbPath), "sessions", getWorkspaceHash("/repo", key));
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, "settings.json"), content);
+  }
+  const repo = new SourceServerWorkspaceAliasRepo(options);
+  const error = await repo
+    .resolveCanonicalWorkspaceKey({ workspacePath: "/repo" })
+    .catch((value: unknown) => value as Error & { code?: string; retryable?: boolean });
+  expect(error).toBeInstanceOf(Error);
+  expect((error as { code?: string }).code).toBe("workspace-config-file-conflict");
+  expect((error as { retryable?: boolean }).retryable).toBe(false);
+  const check = new DatabaseSync(options.taskDbPath);
+  try {
+    expect(check.prepare("SELECT path FROM workspace_alias ORDER BY path").all()).toEqual([
+      { path: "/repo" },
+      { path: "/repo/" },
+    ]);
+    expect(
+      check.prepare("SELECT DISTINCT workspace_key FROM tasks ORDER BY workspace_key").all(),
+    ).toEqual([{ workspace_key: equivalentServerKey }, { workspace_key: equivalentSshKey }]);
+  } finally {
+    check.close();
+  }
+});
+
+it("旧尾斜杠路径建键的活动 ledger 可被归一化路径输入续跑", async () => {
+  const options = await equivalentPathFixture();
+  const db = new DatabaseSync(options.taskDbPath);
+  try {
+    db.prepare(
+      `INSERT INTO workspace_migration_ledger (migration_id, path, canonical_key,
+        variant_keys_json, status, phase, task_backup_path, session_backup_path,
+        created_at, updated_at)
+       VALUES ('migration-legacy', '/repo/', ?, ?, 'running', 'preflight', ?, NULL, 1, 1)`,
+    ).run(
+      equivalentServerKey,
+      JSON.stringify([equivalentServerKey, equivalentSshKey]),
+      join(options.backupRoot, "migration-legacy", "tasks-index.sqlite"),
+    );
+    insertEquivalentTask(db, equivalentServerKey, "/repo/", "task-a");
+    insertEquivalentTask(db, equivalentSshKey, "/repo/", "task-b");
+  } finally {
+    db.close();
+  }
+  const repo = new SourceServerWorkspaceAliasRepo(options);
+  const resolved = await repo.resolveCanonicalWorkspaceKey({ workspacePath: "/repo" });
+  expect(resolved).toMatchObject({
+    canonicalKey: equivalentServerKey,
+    migrationId: "migration-legacy",
+  });
+  const check = new DatabaseSync(options.taskDbPath);
+  try {
+    expect(
+      check.prepare("SELECT task_id, workspace_key FROM tasks ORDER BY task_id").all(),
+    ).toEqual([
+      { task_id: "task-a", workspace_key: equivalentServerKey },
+      { task_id: "task-b", workspace_key: equivalentServerKey },
+    ]);
+  } finally {
+    check.close();
+  }
+});

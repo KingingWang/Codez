@@ -8,6 +8,7 @@ import { mkdir, readFile, readdir, rename, rm, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import {
   isRemoteWorkspaceIdentity,
+  normalizeRemoteWorkspacePath,
   parseRemoteWorkspaceIdentity,
   WORKSPACE_CONFIG_FILE_CONFLICT_ERROR_CODE,
   WORKSPACE_MIGRATION_PLAN_DIVERGED_ERROR_CODE,
@@ -54,6 +55,17 @@ function parseMigrationPhase(value: string): WorkspaceMigrationPhase | null {
   return WORKSPACE_MIGRATION_PHASES.includes(value as WorkspaceMigrationPhase)
     ? (value as WorkspaceMigrationPhase)
     : null;
+}
+
+/** 等价存储路径候选：入口已归一，历史残留形态只有尾斜杠一种现实来源。 */
+function storagePathCandidates(workspacePath: string): string[] {
+  return workspacePath.endsWith("/") ? [workspacePath] : [workspacePath, `${workspacePath}/`];
+}
+
+function storagePathPlaceholders(workspacePath: string): string {
+  return storagePathCandidates(workspacePath)
+    .map(() => "?")
+    .join(", ");
 }
 
 export interface ResolveCanonicalWorkspaceKeyInput {
@@ -320,7 +332,12 @@ export class SourceServerWorkspaceAliasRepo {
     rawWorkspacePath: string,
     operation: (workspacePath: string) => Promise<T>,
   ): Promise<T> {
-    const workspacePath = rawWorkspacePath.trim();
+    // 修复原因：alias/ledger 曾按请求原始路径建键，`/dir` 与 `/dir/` 会选出两个 canonical，
+    // 而控制端 stable identity 归一为同一值，后一次 resolve 覆盖 Core 映射后既有 task 行
+    // 查不到（subscribe/archive 报 project.remote-project-required）。建键统一归一形态。
+    const trimmed = rawWorkspacePath.trim();
+    if (!trimmed) throw new Error("workspacePath is required");
+    const workspacePath = normalizeRemoteWorkspacePath(trimmed);
     if (!workspacePath) throw new Error("workspacePath is required");
     // Bug 原因：alias/ledger 读取后的异步 IO 会让同路径解析交错，返回不同 canonical，
     // 甚至重复搬运配置目录。三个修改入口按规范化路径串行，覆盖读取、提交和连接关闭。
@@ -447,9 +464,6 @@ export class SourceServerWorkspaceAliasRepo {
         // 冻结 canonical；只有 retryFailedWorkspace 显式清除 abandoned 后才允许重新合并。
         return { canonicalKey: abandonedMigration.canonicalKey, mergedKeys: [] };
       }
-      const existing = taskDb
-        .prepare("SELECT canonical_key FROM workspace_alias WHERE path = ?")
-        .get(workspacePath) as { canonical_key: string } | undefined;
       const variants = this.findVariants(taskDb, sessionDb, workspacePath);
       const legacyRouteHint = input.legacyRouteHint?.trim();
       if (
@@ -461,18 +475,55 @@ export class SourceServerWorkspaceAliasRepo {
         variants.push(legacyRouteHint);
         variants.sort();
       }
-      if (existing) {
-        const mergedKeys = variants.filter((key) => key !== existing.canonical_key);
+      const aliases = this.readEquivalentAliases(taskDb, workspacePath);
+      if (aliases.length > 0) {
+        const aliasCanonicals = [...new Set(aliases.map((row) => row.canonical_key))];
+        let canonicalKey: string;
+        if (aliasCanonicals.length === 1) {
+          canonicalKey = aliasCanonicals[0]!;
+        } else {
+          // 修复原因：历史等价路径 alias 分叉。仅一方有 owned state 时零行搬运采纳有状态方；
+          // 均无 state 沿用活跃度裁决；双方有 state 复用既有合并流程（备份+ledger+冲突预检）。
+          const owned: string[] = [];
+          for (const key of aliasCanonicals) {
+            if (await this.hasWorkspaceOwnedStateForHint(taskDb, workspacePath, key))
+              owned.push(key);
+          }
+          if (owned.length === 1) {
+            canonicalKey = owned[0]!;
+          } else if (owned.length === 0) {
+            canonicalKey = this.chooseCanonicalKey(
+              taskDb,
+              sessionDb,
+              workspacePath,
+              aliasCanonicals,
+            );
+          } else {
+            const union = [...new Set([...owned, ...variants])];
+            canonicalKey = this.chooseCanonicalKey(taskDb, sessionDb, workspacePath, union);
+            const mergedKeys = union.filter((key) => key !== canonicalKey);
+            return await this.mergeVariants({
+              taskDb,
+              sessionDb,
+              workspacePath,
+              canonicalKey,
+              variants: [canonicalKey, ...mergedKeys],
+              mergedKeys,
+            });
+          }
+        }
+        this.consolidateEquivalentAliases(taskDb, workspacePath, canonicalKey);
+        const mergedKeys = variants.filter((key) => key !== canonicalKey);
         if (mergedKeys.length === 0) {
           this.markFailedPathResolved(taskDb, workspacePath);
-          return { canonicalKey: existing.canonical_key, mergedKeys: [] };
+          return { canonicalKey, mergedKeys: [] };
         }
         return await this.mergeVariants({
           taskDb,
           sessionDb,
           workspacePath,
-          canonicalKey: existing.canonical_key,
-          variants: [existing.canonical_key, ...mergedKeys],
+          canonicalKey,
+          variants: [canonicalKey, ...mergedKeys],
           mergedKeys,
         });
       }
@@ -613,26 +664,28 @@ export class SourceServerWorkspaceAliasRepo {
     db: Database,
     workspacePath: string,
   ): ActiveWorkspaceMigration | null {
-    const row = db
-      .prepare(`
+    const row = (
+      db
+        .prepare(`
         SELECT migration_id, canonical_key, variant_keys_json, phase,
-               task_backup_path, session_backup_path, session_db_generation
+               task_backup_path, session_backup_path, session_db_generation, path
         FROM workspace_migration_ledger
-        WHERE path = ? AND status IN ('running', 'failed') AND phase IS NOT NULL
+        WHERE status IN ('running', 'failed') AND phase IS NOT NULL
         ORDER BY updated_at DESC, created_at DESC, rowid DESC
-        LIMIT 1
       `)
-      .get(workspacePath) as
-      | {
-          migration_id: string;
-          canonical_key: string;
-          variant_keys_json: string;
-          phase: string;
-          task_backup_path: string;
-          session_backup_path: string | null;
-          session_db_generation: string | null;
-        }
-      | undefined;
+        .all() as Array<{
+        migration_id: string;
+        canonical_key: string;
+        variant_keys_json: string;
+        phase: string;
+        task_backup_path: string;
+        session_backup_path: string | null;
+        session_db_generation: string | null;
+        path: string;
+      }>
+    )
+      .filter((entry) => normalizeRemoteWorkspacePath(entry.path) === workspacePath)
+      .at(0);
     if (!row) return null;
     const phase = parseMigrationPhase(row.phase);
     let variants: unknown;
@@ -664,18 +717,62 @@ export class SourceServerWorkspaceAliasRepo {
     db: Database,
     workspacePath: string,
   ): { canonicalKey: string } | null {
-    const row = db
-      .prepare(`
-        SELECT canonical_key, status
+    const row = (
+      db
+        .prepare(`
+        SELECT canonical_key, status, path
         FROM workspace_migration_ledger
-        WHERE path = ?
         ORDER BY updated_at DESC, created_at DESC, rowid DESC
-        LIMIT 1
       `)
-      .get(workspacePath) as
-      | { canonical_key: string; status: "running" | "completed" | "failed" | "abandoned" }
-      | undefined;
+        .all() as Array<{
+        canonical_key: string;
+        status: "running" | "completed" | "failed" | "abandoned";
+        path: string;
+      }>
+    )
+      .filter((entry) => normalizeRemoteWorkspacePath(entry.path) === workspacePath)
+      .at(0);
     return row?.status === "abandoned" ? { canonicalKey: row.canonical_key } : null;
+  }
+
+  /** 等价路径 alias 行：历史行可能以原始尾斜杠形态建键，按归一等值匹配。 */
+  private readEquivalentAliases(
+    db: Database,
+    workspacePath: string,
+  ): Array<{ path: string; canonical_key: string }> {
+    return (
+      db.prepare("SELECT path, canonical_key FROM workspace_alias").all() as Array<{
+        path: string;
+        canonical_key: string;
+      }>
+    ).filter((row) => normalizeRemoteWorkspacePath(row.path) === workspacePath);
+  }
+
+  private deleteEquivalentAliasDuplicates(db: Database, workspacePath: string): void {
+    const duplicates = this.readEquivalentAliases(db, workspacePath)
+      .map((row) => row.path)
+      .filter((path) => path !== workspacePath);
+    if (duplicates.length === 0) return;
+    db.prepare(
+      `DELETE FROM workspace_alias WHERE path IN (${duplicates.map(() => "?").join(", ")})`,
+    ).run(...duplicates);
+  }
+
+  /** 等价路径 alias 收口为单条归一键行；只动新代码专用 alias 表，旧版本不感知。 */
+  private consolidateEquivalentAliases(
+    db: Database,
+    workspacePath: string,
+    canonicalKey: string,
+  ): void {
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      this.writeAlias(db, workspacePath, canonicalKey);
+      this.deleteEquivalentAliasDuplicates(db, workspacePath);
+      db.exec("COMMIT");
+    } catch (error) {
+      rollbackQuietly(db);
+      throw error;
+    }
   }
 
   private failActiveMigration(db: Database, migrationId: string, errorCode: string): void {
@@ -796,6 +893,7 @@ export class SourceServerWorkspaceAliasRepo {
       }
       if (!hasReachedMigrationPhase(phase, "alias-published")) {
         this.writeAlias(taskDb, workspacePath, canonicalKey);
+        this.deleteEquivalentAliasDuplicates(taskDb, workspacePath);
         phase = await this.commitMigrationPhase(taskDb, migrationId, "alias-published");
       }
       if (!hasReachedMigrationPhase(phase, "completed")) {
@@ -880,9 +978,14 @@ export class SourceServerWorkspaceAliasRepo {
         .prepare(
           `UPDATE session SET workspace_id = ?
              WHERE workspace_id IN (${placeholders})
-               AND (directory = ? OR path = ?)`,
+               AND (directory IN (${storagePathPlaceholders(workspacePath)}) OR path IN (${storagePathPlaceholders(workspacePath)}))`,
         )
-        .run(canonicalKey, ...mergedKeys, workspacePath, workspacePath);
+        .run(
+          canonicalKey,
+          ...mergedKeys,
+          ...storagePathCandidates(workspacePath),
+          ...storagePathCandidates(workspacePath),
+        );
       sessionDb.exec("COMMIT");
     } catch (error) {
       rollbackQuietly(sessionDb);
@@ -910,8 +1013,8 @@ export class SourceServerWorkspaceAliasRepo {
         values.push(...variants);
       }
       for (const column of pathColumns) {
-        predicates.push(`${column} = ?`);
-        values.push(workspacePath);
+        predicates.push(`${column} IN (${storagePathPlaceholders(workspacePath)})`);
+        values.push(...storagePathCandidates(workspacePath));
       }
       if (
         predicates.length > 0 &&
@@ -1367,23 +1470,27 @@ export class SourceServerWorkspaceAliasRepo {
     );
     try {
       await runTasksDatabaseMigrations(taskDb, "source-server");
-      const ledger = taskDb
-        .prepare(`
-          SELECT migration_id, canonical_key, variant_keys_json, phase
+      // 修复原因：旧 failed ledger 可能以原始尾斜杠路径建键；abandon 入口归一后需按
+      // 归一等值匹配，否则用户无法对历史分叉路径执行保守放弃。
+      const ledger = (
+        taskDb
+          .prepare(`
+          SELECT migration_id, canonical_key, variant_keys_json, phase, path
           FROM workspace_migration_ledger
-          WHERE path = ? AND status = 'failed'
+          WHERE status = 'failed'
             ${migrationId ? "AND migration_id = ?" : ""}
           ORDER BY updated_at DESC, created_at DESC, rowid DESC
-          LIMIT 1
         `)
-        .get(workspacePath, ...(migrationId ? [migrationId] : [])) as
-        | {
-            migration_id: string;
-            canonical_key: string;
-            variant_keys_json: string;
-            phase: string | null;
-          }
-        | undefined;
+          .all(...(migrationId ? [migrationId] : [])) as Array<{
+          migration_id: string;
+          canonical_key: string;
+          variant_keys_json: string;
+          phase: string | null;
+          path: string;
+        }>
+      )
+        .filter((entry) => normalizeRemoteWorkspacePath(entry.path) === workspacePath)
+        .at(0);
       if (!ledger) throw new Error(`No failed Source Server migration for path: ${workspacePath}`);
       if (ledger.phase !== null) {
         // phase 非空的 failed ledger 仍是 crash resume owner，不能被 abandon 销毁。
@@ -1404,9 +1511,9 @@ export class SourceServerWorkspaceAliasRepo {
           .prepare(`
           SELECT canonical_key, variant_keys_json
           FROM workspace_migration_ledger
-          WHERE migration_id = ? AND path = ? AND status = 'failed' AND phase IS NULL
+          WHERE migration_id = ? AND status = 'failed' AND phase IS NULL
         `)
-          .get(ledger.migration_id, workspacePath) as
+          .get(ledger.migration_id) as
           | { canonical_key: string; variant_keys_json: string }
           | undefined;
         if (
@@ -1476,18 +1583,22 @@ export class SourceServerWorkspaceAliasRepo {
     let canonicalKey: string | undefined;
     try {
       await runTasksDatabaseMigrations(taskDb, "source-server");
-      const failed = taskDb
-        .prepare(`
-        SELECT canonical_key
+      const failed = (
+        taskDb
+          .prepare(`
+        SELECT canonical_key, path
         FROM workspace_migration_ledger
-        WHERE path = ? AND status IN ('failed', 'abandoned')
+        WHERE status IN ('failed', 'abandoned')
           ${migrationId ? "AND migration_id = ?" : ""}
         ORDER BY updated_at DESC, created_at DESC, rowid DESC
-        LIMIT 1
       `)
-        .get(workspacePath, ...(migrationId ? [migrationId] : [])) as
-        | { canonical_key: string }
-        | undefined;
+          .all(...(migrationId ? [migrationId] : [])) as Array<{
+          canonical_key: string;
+          path: string;
+        }>
+      )
+        .filter((entry) => normalizeRemoteWorkspacePath(entry.path) === workspacePath)
+        .at(0);
       canonicalKey = failed?.canonical_key;
     } finally {
       taskDb.close();
@@ -1632,9 +1743,13 @@ export class SourceServerWorkspaceAliasRepo {
       ].find((candidate) => hasColumn(db, table, candidate));
       let rows = (
         column
-          ? db
-              .prepare(`SELECT * FROM ${table} WHERE ${column} = ?`)
-              .all(column === "workspace_path" || column === "path" ? workspacePath : workspaceKey)
+          ? column === "workspace_path" || column === "path"
+            ? db
+                .prepare(
+                  `SELECT * FROM ${table} WHERE ${column} IN (${storagePathPlaceholders(workspacePath)})`,
+                )
+                .all(...storagePathCandidates(workspacePath))
+            : db.prepare(`SELECT * FROM ${table} WHERE ${column} = ?`).all(workspaceKey)
           : db.prepare(`SELECT * FROM ${table}`).all()
       ) as unknown[];
       if (version === 2 && !column && table === "task_group_view_node_orders") {
@@ -1686,9 +1801,11 @@ export class SourceServerWorkspaceAliasRepo {
       const rows = taskDb
         .prepare(
           `SELECT DISTINCT workspace_key FROM ${table}
-           WHERE workspace_path = ? AND workspace_key LIKE 'remote:%'`,
+           WHERE workspace_path IN (${storagePathPlaceholders(workspacePath)}) AND workspace_key LIKE 'remote:%'`,
         )
-        .all(workspacePath) as unknown as Array<{ workspace_key: string }>;
+        .all(...storagePathCandidates(workspacePath)) as unknown as Array<{
+        workspace_key: string;
+      }>;
       for (const row of rows)
         if (isLegacyRemoteKey(row.workspace_key)) variants.add(row.workspace_key);
     }
@@ -1729,9 +1846,12 @@ export class SourceServerWorkspaceAliasRepo {
     if (sessionDb && hasTable(sessionDb, "session")) {
       const rows = sessionDb
         .prepare(
-          "SELECT DISTINCT workspace_id FROM session WHERE (directory = ? OR path = ?) AND workspace_id LIKE 'remote:%'",
+          `SELECT DISTINCT workspace_id FROM session WHERE (directory IN (${storagePathPlaceholders(workspacePath)}) OR path IN (${storagePathPlaceholders(workspacePath)})) AND workspace_id LIKE 'remote:%'`,
         )
-        .all(workspacePath, workspacePath) as unknown as Array<{ workspace_id: string }>;
+        .all(
+          ...storagePathCandidates(workspacePath),
+          ...storagePathCandidates(workspacePath),
+        ) as unknown as Array<{ workspace_id: string }>;
       for (const row of rows)
         if (isLegacyRemoteKey(row.workspace_id)) variants.add(row.workspace_id);
     }
@@ -1800,9 +1920,9 @@ export class SourceServerWorkspaceAliasRepo {
       const rows = taskDb
         .prepare(
           `SELECT workspace_key, MAX(updated_at) AS last_active_at FROM ${table}
-           WHERE workspace_path = ? GROUP BY workspace_key`,
+           WHERE workspace_path IN (${storagePathPlaceholders(workspacePath)}) GROUP BY workspace_key`,
         )
-        .all(workspacePath) as unknown as WorkspaceActivityRow[];
+        .all(...storagePathCandidates(workspacePath)) as unknown as WorkspaceActivityRow[];
       for (const row of rows) {
         if (activity.has(row.workspace_key)) {
           activity.set(
@@ -1815,9 +1935,12 @@ export class SourceServerWorkspaceAliasRepo {
     if (sessionDb && hasTable(sessionDb, "session")) {
       const rows = sessionDb
         .prepare(
-          "SELECT workspace_id AS workspace_key, MAX(time_updated) AS last_active_at FROM session WHERE directory = ? OR path = ? GROUP BY workspace_id",
+          `SELECT workspace_id AS workspace_key, MAX(time_updated) AS last_active_at FROM session WHERE directory IN (${storagePathPlaceholders(workspacePath)}) OR path IN (${storagePathPlaceholders(workspacePath)}) GROUP BY workspace_id`,
         )
-        .all(workspacePath, workspacePath) as unknown as WorkspaceActivityRow[];
+        .all(
+          ...storagePathCandidates(workspacePath),
+          ...storagePathCandidates(workspacePath),
+        ) as unknown as WorkspaceActivityRow[];
       for (const row of rows) {
         if (activity.has(row.workspace_key)) {
           activity.set(
@@ -1849,7 +1972,7 @@ export class SourceServerWorkspaceAliasRepo {
         throw new SourceServerWorkspaceIdentityConflictError(workspacePath, conflicts);
       }
       const listTasks = db.prepare(
-        "SELECT task_id, title, created_at, updated_at, pinned, archived, deleted, title_overridden, searchable_text, unread_at, last_unread_at, task_status, provider, mode, model, migration_source, forked_from_task_id, cron_automation_id, off_peak_task_id, meta_json FROM tasks WHERE workspace_key = ? AND workspace_path = ?",
+        `SELECT task_id, title, created_at, updated_at, pinned, archived, deleted, title_overridden, searchable_text, unread_at, last_unread_at, task_status, provider, mode, model, migration_source, forked_from_task_id, cron_automation_id, off_peak_task_id, meta_json FROM tasks WHERE workspace_key = ? AND workspace_path IN (${storagePathPlaceholders(workspacePath)})`,
       );
       const findCanonical = db.prepare(
         "SELECT task_id, title, created_at, updated_at, pinned, archived, deleted, title_overridden, searchable_text, unread_at, last_unread_at, task_status, provider, mode, model, migration_source, forked_from_task_id, cron_automation_id, off_peak_task_id, meta_json FROM tasks WHERE workspace_key = ? AND task_id = ?",
@@ -1894,7 +2017,10 @@ export class SourceServerWorkspaceAliasRepo {
           : "SELECT NULL WHERE 0",
       );
       for (const sourceKey of mergedKeys) {
-        const rows = listTasks.all(sourceKey, workspacePath) as unknown as Array<{
+        const rows = listTasks.all(
+          sourceKey,
+          ...storagePathCandidates(workspacePath),
+        ) as unknown as Array<{
           task_id: string;
           title: string;
           created_at: number;
@@ -2099,7 +2225,7 @@ export class SourceServerWorkspaceAliasRepo {
   ): WorkspaceTaskIdentityConflict[] {
     if (!hasTable(db, "tasks")) return [];
     const listTasks = db.prepare(
-      "SELECT task_id, meta_json, updated_at, cron_automation_id, off_peak_task_id, forked_from_task_id FROM tasks WHERE workspace_key = ? AND workspace_path = ?",
+      `SELECT task_id, meta_json, updated_at, cron_automation_id, off_peak_task_id, forked_from_task_id FROM tasks WHERE workspace_key = ? AND workspace_path IN (${storagePathPlaceholders(workspacePath)})`,
     );
     const findCanonical = db.prepare(
       "SELECT task_id, meta_json, updated_at, cron_automation_id, off_peak_task_id, forked_from_task_id FROM tasks WHERE workspace_key = ? AND task_id = ?",
@@ -2111,9 +2237,10 @@ export class SourceServerWorkspaceAliasRepo {
     const merged = new Map<string, WorkspaceTaskMetaRow>();
     const conflicts: WorkspaceTaskIdentityConflict[] = [];
     for (const sourceKey of mergedKeys) {
-      const rows = listTasks.all(sourceKey, workspacePath) as unknown as Array<
-        WorkspaceTaskMetaRow & { task_id: string }
-      >;
+      const rows = listTasks.all(
+        sourceKey,
+        ...storagePathCandidates(workspacePath),
+      ) as unknown as Array<WorkspaceTaskMetaRow & { task_id: string }>;
       for (const row of rows) {
         const target =
           merged.get(row.task_id) ??
@@ -2154,16 +2281,7 @@ export class SourceServerWorkspaceAliasRepo {
       ? (db
           .prepare("SELECT migration_id FROM workspace_migration_ledger WHERE migration_id = ?")
           .get(input.migrationId) as { migration_id: string } | undefined)
-      : (db
-          .prepare(`
-            SELECT migration_id
-            FROM workspace_migration_ledger
-            WHERE path = ? AND status = 'failed'
-              AND error = 'workspace-task-identity-conflict'
-            ORDER BY updated_at DESC, created_at DESC, rowid DESC
-            LIMIT 1
-          `)
-          .get(input.workspacePath) as { migration_id: string } | undefined);
+      : this.findFailedLedgerForPath(db, input.workspacePath, "workspace-task-identity-conflict");
     const migrationId = existing?.migration_id ?? this.createMigrationId();
     const now = this.now();
     db.exec("BEGIN IMMEDIATE");
@@ -2237,16 +2355,7 @@ export class SourceServerWorkspaceAliasRepo {
       ? (db
           .prepare("SELECT migration_id FROM workspace_migration_ledger WHERE migration_id = ?")
           .get(input.migrationId) as { migration_id: string } | undefined)
-      : (db
-          .prepare(`
-        SELECT migration_id
-        FROM workspace_migration_ledger
-        WHERE path = ? AND status = 'failed'
-          AND error = 'workspace-config-file-conflict'
-        ORDER BY updated_at DESC, created_at DESC, rowid DESC
-        LIMIT 1
-      `)
-          .get(input.workspacePath) as { migration_id: string } | undefined);
+      : this.findFailedLedgerForPath(db, input.workspacePath, "workspace-config-file-conflict");
     const migrationId = existing?.migration_id ?? this.createMigrationId();
     const now = this.now();
     db.exec("BEGIN IMMEDIATE");
@@ -2311,11 +2420,44 @@ export class SourceServerWorkspaceAliasRepo {
   }
 
   private markFailedPathResolved(db: Database, workspacePath: string): void {
-    db.prepare(`
-      UPDATE workspace_migration_ledger
-      SET status = 'completed', error = NULL, updated_at = ?
-      WHERE path = ? AND status = 'failed'
-    `).run(this.now(), workspacePath);
+    this.completeFailedLedgersForPath(db, workspacePath);
+  }
+
+  /** 等价路径的旧 failed ledger 也要收口，否则 failedPathCount 会对同一 workspace 重复计数。 */
+  private completeFailedLedgersForPath(db: Database, workspacePath: string): void {
+    const failed = (
+      db
+        .prepare(
+          "SELECT migration_id, path FROM workspace_migration_ledger WHERE status = 'failed'",
+        )
+        .all() as Array<{ migration_id: string; path: string }>
+    ).filter((row) => normalizeRemoteWorkspacePath(row.path) === workspacePath);
+    if (failed.length === 0) return;
+    db.prepare(
+      `UPDATE workspace_migration_ledger
+       SET status = 'completed', error = NULL, updated_at = ?
+       WHERE migration_id IN (${failed.map(() => "?").join(", ")})`,
+    ).run(this.now(), ...failed.map((row) => row.migration_id));
+  }
+
+  /** 按归一等值匹配 failed ledger：旧账本可能以原始尾斜杠路径建键。 */
+  private findFailedLedgerForPath(
+    db: Database,
+    workspacePath: string,
+    error: string,
+  ): { migration_id: string } | undefined {
+    return (
+      db
+        .prepare(
+          `SELECT migration_id, path
+           FROM workspace_migration_ledger
+           WHERE status = 'failed' AND error = ?
+           ORDER BY updated_at DESC, created_at DESC, rowid DESC`,
+        )
+        .all(error) as Array<{ migration_id: string; path: string }>
+    )
+      .filter((row) => normalizeRemoteWorkspacePath(row.path) === workspacePath)
+      .at(0);
   }
 
   private writeLedger(

@@ -55,7 +55,19 @@ function normalizeWorkspacePathForIdentity(workspacePath: string): string {
   return `/${trimmed}`;
 }
 
-function resolveServerIdentityId(target: Extract<RemoteWorkspaceScopeTarget, { kind: "server" }>): string {
+/**
+ * 远端存储路径的 POSIX 归一形态（与 identity 构造同源）：分隔符归一、折叠重复斜杠、
+ * 去收尾斜杠。Source Server alias/ledger 建键与等价路径匹配必须复用本函数，
+ * 禁止业务代码手写第二份归一；执行/展示仍用调用方原始 workspacePath。
+ * 配置目录哈希只吃 workspaceKey（getWorkspaceHash），不受本归一影响。
+ */
+export function normalizeRemoteWorkspacePath(workspacePath: string): string {
+  return normalizeWorkspacePathForIdentity(workspacePath);
+}
+
+function resolveServerIdentityId(
+  target: Extract<RemoteWorkspaceScopeTarget, { kind: "server" }>,
+): string {
   const explicit = target.serverId?.trim() || target.name?.trim();
   if (explicit) {
     return explicit;

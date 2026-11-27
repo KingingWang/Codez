@@ -166,6 +166,16 @@ export class SourceServerWorkspaceIdentityMapper {
   private readonly canonicalToStable = new Map<string, string>();
 
   public register(mapping: SourceServerWorkspaceIdentityMapping): void {
+    // 诊断：同一 stable identity 换 canonical 通常意味着远端 alias 分叉或残留旧映射；
+    // 语义仍是最新 resolve 胜出，这里只补 warn 便于定位 remote-project-required 类问题。
+    const previous = this.stableToCanonical.get(mapping.stableIdentity);
+    if (previous && previous !== mapping.canonicalIdentity) {
+      log.warn("workspace identity mapping replaced", {
+        stableIdentity: mapping.stableIdentity,
+        previousCanonicalIdentity: previous,
+        nextCanonicalIdentity: mapping.canonicalIdentity,
+      });
+    }
     this.stableToCanonical.set(mapping.stableIdentity, mapping.canonicalIdentity);
     this.canonicalToStable.set(mapping.canonicalIdentity, mapping.stableIdentity);
   }

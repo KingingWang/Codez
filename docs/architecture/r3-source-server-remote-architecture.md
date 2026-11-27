@@ -1269,6 +1269,9 @@ Core workspace 定位层收到 { workspacePath, legacyRouteHint? }
 ```
 
 - alias 表落远端 `tasks-index.sqlite`（`workspace_alias(path, canonical_key, created_at)`），是新代码专用的小型附加表，旧代码不感知、不受影响。
+- **等价路径形态（2026-11-27 修复）**：`/dir` 与 `/dir/` 等 POSIX 等价形态必须收敛到同一 alias 键。alias/ledger/failed-path 建键与串行队列统一使用 `normalizeRemoteWorkspacePath`（与 identity 构造同源归一）；对存量表的读取（alias、ledger 小表按归一等值匹配，tasks/session 等大表按 `path` 与 `path+'/'` 候选集匹配）兼容历史原始形态。执行 cwd、展示路径与 `sessions/<hash>` 配置目录哈希不受归一影响（哈希只吃 workspaceKey）。
+- 历史等价路径 alias 分叉的安全自动恢复：canonical 全同→整合为单行归一键；仅一方有 owned state→零行搬运采纳有状态方；均无 state→沿用活跃度裁决；双方有 state→以这些 canonical 为 variants 复用既有合并流程（备份+ledger+冲突预检），task identity / config 冲突保持 fail-closed 并走既有迁移报告与 abandon/retry 管理面。整合只删改等价路径的 alias 冗余行，不重写 tasks/session 行与 canonical key。
+- 修复背景：分叉 alias 会让控制端同一 stable identity 在 Core 映射表被后一次 resolve 覆盖，既有 task 行按新 canonical 查不到，表现为续句订阅 `project.remote-project-required`、旧会话打不开、归档报任务不存在；重启与升级不消除（alias 持久化在远端库）。
 - **单线路用户（绝大多数）：任务行、session 行、`sessions/<hash>` 配置目录全部零改动**。新旧版本读写同一批行：回退后已有会话可见、可续聊；新版本在同一 session 里追加的消息旧版本同样可见（messages/parts 按 session_id 关联）；反之亦然。
 - 多线路合并仅处理「同 path 多个 remote:\* 变体」，迁移对象与裁决固定如下：
 
